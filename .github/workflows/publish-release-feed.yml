@@ -3,6 +3,7 @@ name: Publish TRAKKr OTA Feed
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,24 +16,30 @@ jobs:
     steps:
       - name: Check out update repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Download the firmware release asset
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
+          release_tag="$RELEASE_TAG"
+          if [ -z "$release_tag" ]; then
+            release_tag=$(gh release view --json tagName --jq '.tagName')
+          fi
           mkdir -p release-asset
-          gh release download "$RELEASE_TAG" --pattern '*.bin' --dir release-asset
+          gh release download "$release_tag" --pattern '*.bin' --dir release-asset
           files=(release-asset/*.bin)
           if [ ! -f "${files[0]}" ] || [ "${#files[@]}" -ne 1 ]; then
             echo "A published TRAKKr release must contain exactly one .bin asset."
             exit 1
           fi
           echo "FIRMWARE=${files[0]}" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
 
       - name: Publish the firmware feed
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
           REPOSITORY: ${{ github.repository }}
         run: |
           version="${RELEASE_TAG#v}"
