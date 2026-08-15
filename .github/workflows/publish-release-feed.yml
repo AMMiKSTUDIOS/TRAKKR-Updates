@@ -1,0 +1,57 @@
+name: Publish TRAKKr OTA Feed
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  publish-ota-feed:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out update repository
+        uses: actions/checkout@v4
+
+      - name: Download the firmware release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir -p release-asset
+          gh release download "$RELEASE_TAG" --pattern '*.bin' --dir release-asset
+          files=(release-asset/*.bin)
+          if [ ! -f "${files[0]}" ] || [ "${#files[@]}" -ne 1 ]; then
+            echo "A published TRAKKr release must contain exactly one .bin asset."
+            exit 1
+          fi
+          echo "FIRMWARE=${files[0]}" >> "$GITHUB_ENV"
+
+      - name: Publish the firmware feed
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          version="${version#V}"
+          mkdir -p firmware
+          cp "$FIRMWARE" firmware/trakkr-firmware.bin
+          size=$(stat -c%s firmware/trakkr-firmware.bin)
+          sha256=$(sha256sum firmware/trakkr-firmware.bin | awk '{print $1}')
+          cat > manifest.json <<EOF
+          {
+            "version": "$version",
+            "board": "esp32dev",
+            "size": $size,
+            "sha256": "$sha256",
+            "url": "https://raw.githubusercontent.com/$REPOSITORY/main/firmware/trakkr-firmware.bin"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add firmware/trakkr-firmware.bin manifest.json
+          git commit -m "Publish OTA feed for $RELEASE_TAG"
+          git push
