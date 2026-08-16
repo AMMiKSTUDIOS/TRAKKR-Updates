@@ -1,7 +1,7 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "board": "esp32dev",
-  "size": 1097728,
-  "sha256": "f9a24fb300e86666616a2c831a43114c73d293f2e5e330530e05201c6d553cf9",
+  "size": 1098656,
+  "sha256": "82edbdf7814f72fb185c7dc35f2e3636f73d4ba2a9ede91fd2cadda3f582843f",
   "url": "https://raw.githubusercontent.com/AMMiKSTUDIOS/TRAKKR-Updates/main/firmware/trakkr-firmware.bin"
 }
